@@ -1,0 +1,127 @@
+---
+title: "Speculative positioning reported in CFTC's Commitment of Traders Report"
+author: "Hedge Analytics Ltd"
+date: "`r format(Sys.time(), '%B, %Y')`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+Speculative positions in financial futures markets (including delta-adjusted option exposure)
+
+## Equity Markets
+
+
+```{r , echo=FALSE, fig.show="hold", out.width="50%"}
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_DJIA Consolidated - CHICAGO BOARD OF TRADE.png",
+    "Output/Spec/Spec_S&P 500 Consolidated - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_NASDAQ-100 Consolidated - CHICAGO MERCANTILE EXCHANGE.png",
+    "Output/Spec/Spec_VIX FUTURES - CBOE FUTURES EXCHANGE.png"
+  )
+)
+
+```
+
+## Short Term Interest Rate Markets
+
+
+```{r , echo=FALSE, fig.show="hold", out.width="50%"}
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_FED FUNDS - CHICAGO BOARD OF TRADE.png",
+    "Output/Spec/Spec_SOFR-1M - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_EURODOLLARS-3M - CHICAGO MERCANTILE EXCHANGE.png",
+    "Output/Spec/Spec_SOFR-3M - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+
+```
+
+\newpage
+
+## Bond markets
+```{r , echo=FALSE, fig.show="hold", out.width="50%"}
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_UST 2Y NOTE - CHICAGO BOARD OF TRADE.png",
+    "Output/Spec/Spec_UST 5Y NOTE - CHICAGO BOARD OF TRADE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_UST 10Y NOTE - CHICAGO BOARD OF TRADE.png",
+    "Output/Spec/Spec_ULTRA UST 10Y - CHICAGO BOARD OF TRADE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_UST BOND - CHICAGO BOARD OF TRADE.png",
+    "Output/Spec/Spec_ULTRA UST BOND - CHICAGO BOARD OF TRADE.png"
+  )
+)
+
+```
+
+\newpage
+
+## Currency markets - developed
+```{r , echo=FALSE, fig.show="hold", out.width="50%"}
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE.png",
+    "Output/Spec/Spec_CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_BRITISH POUND - CHICAGO MERCANTILE EXCHANGE.png",
+    "Output/Spec/Spec_EURO FX - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_JAPANESE YEN - CHICAGO MERCANTILE EXCHANGE.png",
+    "Output/Spec/Spec_SWISS FRANC - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+
+```
+\newpage
+
+## Currency markets - other
+```{r , echo=FALSE, fig.show="hold", out.width="50%"}
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_BRAZILIAN REAL - CHICAGO MERCANTILE EXCHANGE.png",
+    "Output/Spec/Spec_MEXICAN PESO - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_NZ DOLLAR - CHICAGO MERCANTILE EXCHANGE.png",
+    "Output/Spec/Spec_SO AFRICAN RAND - CHICAGO MERCANTILE EXCHANGE.png"
+  )
+)
+knitr::include_graphics(
+  c(
+    "Output/Spec/Spec_USD INDEX - ICE FUTURES U.S..png",
+    "Output/Spec/Spec_BBG COMMODITY - CHICAGO BOARD OF TRADE.png"
+  )
+)
+
+```
+<footer>&copy; Copyright 2022 Hedge Analytics Ltd</footer>

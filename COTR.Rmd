@@ -1,0 +1,191 @@
+---
+title: "Commitment Of Traders Report"
+author: "Hedge Analytics Ltd"
+date: "`r format(Sys.time(), '%B, %Y')`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+```{=html}
+<style>                     
+.navbar {
+  background-color: #D5E4EB;
+  border-color:light grey;
+}
+.navbar-brand {
+color:black!important;
+}
+
+.section.sidebar {
+  top: 61px;
+  border-bottom: 10px solid #ececec;
+  border-left: 10px solid #ececec;
+  background-color: #D5E4EB;
+  border-color:light grey;
+}
+
+</style>        
+```
+
+```{r global, include=FALSE}
+library(shiny)
+library(flexdashboard)
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+library(readr)
+library(DT)
+
+COTR<-read.csv("Data/COTRFinsince2006.csv")
+ COTR$Report_Date_as_MM_DD_YYYY<-as.Date(ymd(COTR$Report_Date_as_MM_DD_YYYY))
+ COTR<-arrange(COTR, Report_Date_as_MM_DD_YYYY)
+ OUTOFDATE<-(Sys.Date()>(COTR$Report_Date_as_MM_DD_YYYY[nrow(COTR)]+8))
+ 
+if(OUTOFDATE==TRUE) {
+  url <- "https://www.cftc.gov/dea/newcot/FinComWk.txt"
+  destfile <- "Data/latestFinCOTR.txt"
+  download.file(url, destfile)
+  latest <-
+    readr::read_csv(here::here("Data/latestFinCOTR.txt"), col_names = FALSE)
+  names(latest) <- names(COTR)
+  latest$Report_Date_as_MM_DD_YYYY <-
+    as.Date(ymd(latest$Report_Date_as_MM_DD_YYYY))
+  COTR <- rbind (COTR, latest)
+#  write.csv(unique(latest$Market_and_Exchange_Names),"Data/MarketNames.csv",row.names = FALSE)
+}  
+  
+
+COTR<-arrange(COTR, Report_Date_as_MM_DD_YYYY)
+write.csv(COTR,"Data/COTRFinsince2006.csv", row.names = FALSE)
+
+COTR$Dealer_Positions_Net<-COTR$Dealer_Positions_Long_All - COTR$Dealer_Positions_Short_All
+COTR$Asset_Mgr_Positions_Net<-COTR$Asset_Mgr_Positions_Long_All - COTR$Asset_Mgr_Positions_Short_All
+COTR$Lev_Money_Positions_Net<-COTR$Lev_Money_Positions_Long_All - COTR$Lev_Money_Positions_Short_All
+COTR$Other_Rept_Positions_Net<-COTR$Other_Rept_Positions_Long_All - COTR$Other_Rept_Positions_Short_All
+COTR$Tot_Rept_Positions_Net<-COTR$Tot_Rept_Positions_Long_All - COTR$Tot_Rept_Positions_Short_All
+COTR$NonRept_Positions_Net <-COTR$NonRept_Positions_Long_All - COTR$NonRept_Positions_Short_All
+
+COTR$Pct_of_OI_Dealer_Net<-COTR$Pct_of_OI_Dealer_Long_All - COTR$Pct_of_OI_Dealer_Short_All
+COTR$Pct_of_OI_Asset_Mgr_Net<-COTR$Pct_of_OI_Asset_Mgr_Long_All - COTR$Pct_of_OI_Asset_Mgr_Short_All
+COTR$Pct_of_OI_Lev_Money_Net<-COTR$Pct_of_OI_Lev_Money_Long_All - COTR$Pct_of_OI_Lev_Money_Short_All
+COTR$Pct_of_OI_Other_Rept_Net<-COTR$Pct_of_OI_Other_Rept_Long_All - COTR$Pct_of_OI_Other_Rept_Short_All
+COTR$Pct_of_OI_Tot_Rept_Net<-COTR$Pct_of_OI_Tot_Rept_Long_All - COTR$Pct_of_OI_Tot_Rept_Short_All
+COTR$Pct_of_OI_NonRept_Net <-COTR$Pct_of_OI_NonRept_Long_All - COTR$Pct_of_OI_NonRept_Short_All
+
+markets<-readr::read_csv("Data/MarketNames.csv")
+markets <- markets[,1]
+sincedate<-unique(COTR$Report_Date_as_MM_DD_YYYY)
+defaultdate<-as.Date(sincedate[length(sincedate)-52])
+
+column_names<-readr::read_csv(here::here("Data/columns.csv"),col_names = FALSE)
+OIoutright<-dput(column_names[1:20,])
+OIpct<-dput(column_names[21:43,])
+
+```
+
+## Inputs {.sidebar}
+
+```{r}
+
+selectInput("MARKET", label = h3("Market"),
+    choices = markets,
+    selected = "UST 10Y NOTE - CHICAGO BOARD OF TRADE")
+
+selectInput("OIraw", label = h3("Open Interest: lots"),
+     choices = OIoutright,
+     selected = c("Dealer_Positions_Net","Asset_Mgr_Positions_Net","Lev_Money_Positions_Net","NonRept_Positions_Net","Other_Rept_Positions_Net"),multiple = TRUE)
+ 
+ selectInput("OIpercent", label = h3("Open Interest: pct"),
+     choices = OIpct,
+     selected=c("Pct_of_OI_Dealer_Net","Pct_of_OI_Asset_Mgr_Net","Pct_of_OI_Lev_Money_Net","Pct_of_OI_NonRept_Net","Pct_of_OI_Other_Rept_Net"), multiple = TRUE)
+
+ selectInput("Sincedate", label = h3("Since"),
+     choices = sincedate,
+     selected=defaultdate)
+ 
+```
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Open Interest: number of lots net (long - short)
+
+```{r OI, echo=FALSE}
+
+market<-reactive(input$MARKET)
+OI<-reactive(input$OIraw)
+startdate<-reactive(input$Sincedate)
+
+renderPlotly({
+  
+  df <- COTR |>
+    dplyr::filter(Market_and_Exchange_Names == market(),Report_Date_as_MM_DD_YYYY>=startdate())
+  
+  data2<-data.frame('period'=as.Date(df$Report_Date_as_MM_DD_YYYY),df[c(OI())])
+
+   data2 <-
+   data2 %>% pivot_longer(c(-period), names_to = 'key', values_to = "value")
+
+
+p<-ggplot(data=data2,
+       aes(x=period, y=value, colour=key)) +
+  geom_line()+
+  labs(title = paste0("COTR: ",market()),
+       caption = "source: COTR, Hedge Analytics") +
+  scale_x_date(date_breaks = "6 months", date_labels =  "%b %Y", name = "Date") +
+  scale_y_continuous(name = "Lots", labels = scales::comma)+
+  theme_economist()+
+  theme(text=element_text(size=8))
+
+ggplotly(p)
+
+
+
+})
+
+
+```
+
+
+Row {data-width=350}
+-----------------------------------------------------------------------
+
+### Open Interest: percent of total
+
+```{r OIpct, echo=FALSE}
+market1<-reactive(input$MARKET)
+OIpct<-reactive(input$OIpercent)
+startdate1<-reactive(input$Sincedate)
+
+renderPlotly({
+  
+  df1 <- COTR |>
+    dplyr::filter(Market_and_Exchange_Names == market1(),Report_Date_as_MM_DD_YYYY>=startdate1())
+  
+  data3<-data.frame('period'=as.Date(df1$Report_Date_as_MM_DD_YYYY),df1[c(OIpct())])
+
+   data3 <-
+   data3 %>% pivot_longer(c(-period), names_to = 'key', values_to = "value")
+
+p<-ggplot(data=data3,
+       aes(x=as.Date(period), y=value, colour=key)) +
+  geom_line()+
+  labs(title = paste0("COTR: ",market()),
+       caption = "source: COTR, Hedge Analytics") +
+  scale_x_date(date_breaks = "6 months", date_labels =  "%b %Y", name = "Date") +
+  scale_y_continuous(name = "Percent", labels = scales::comma)+
+  theme_economist()+
+  theme(text=element_text(size=8))
+
+ggplotly(p)
+})
+```
+

@@ -1,0 +1,207 @@
+---
+title: "Commitment Of Traders Report"
+author: "Hedge Analytics Ltd"
+date: "`r format(Sys.time(), '%B, %Y')`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+```{=html}
+<style>                     
+.navbar {
+  background-color: #D5E4EB;
+  border-color:light grey;
+}
+.navbar-brand {
+color:black!important;
+}
+
+.section.sidebar {
+  top: 61px;
+  border-bottom: 10px solid #ececec;
+  border-left: 10px solid #ececec;
+  background-color: #D5E4EB;
+  border-color:light grey;
+}
+
+</style>        
+```
+
+```{r global, include=FALSE}
+library(shiny)
+library(flexdashboard)
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+library(readr)
+library(DT)
+
+SummaryNames <- readr::read_csv("Data/MarketNames.csv")
+target <- c(SummaryNames$Code)
+
+Spec <- readr::read_csv("Data/COTRSpec.csv")
+Spec$Report_Date_as_MM_DD_YYYY<-as.Date(ymd(Spec$Report_Date_as_MM_DD_YYYY))
+Spec<-arrange(Spec, Report_Date_as_MM_DD_YYYY)
+
+Spec$CFTC_Contract_Market_Code <- as.numeric(Spec$CFTC_Contract_Market_Code)
+OUTOFDATE<-(Sys.Date()>(Spec$Report_Date_as_MM_DD_YYYY[nrow(Spec)]+10))
+
+if(OUTOFDATE==TRUE) {
+  url <- "https://www.cftc.gov/dea/newcot/deacom.txt"
+  destfile <- "Data/latestFinCOTRSpec.txt"
+  download.file(url, destfile)
+  
+  latest <-readr::read_csv(here::here("Data/latestFinCOTRSpec.txt"))
+  latest$Report_Date_as_MM_DD_YYYY <-
+    as.Date(ymd(latest$Report_Date_as_MM_DD_YYYY))
+  Spec <- rbind (Spec, latest)
+  #  write.csv(unique(latest$Market_and_Exchange_Names),"Data/MarketNames.csv",row.names = FALSE)
+}  
+  
+  
+
+# Spec<-arrange(Spec, Report_Date_as_MM_DD_YYYY)
+# write.csv(Spec,"Data/COTRSpec.csv", row.names = FALSE)
+
+Spec <-
+  Spec %>%
+  filter(CFTC_Contract_Market_Code %in% target)
+
+Spec$Comm_Net<-Spec$Comm_Positions_Long_All - Spec$Comm_Positions_Short_All
+Spec$NonComm_Net<-Spec$NonComm_Positions_Long_All - Spec$NonComm_Positions_Short_All
+Spec$NonRept_Net<-Spec$NonRept_Positions_Long_All - Spec$NonRept_Positions_Short_All
+
+Spec$Pct_Comm_Net<-Spec$Pct_of_OI_Comm_Long_All - Spec$Pct_of_OI_Comm_Short_All
+Spec$Pct_NonComm_Net<-Spec$Pct_of_OI_NonComm_Long_All - Spec$Pct_of_OI_NonComm_Short_All
+Spec$Pct_NonRept_Net<-Spec$Pct_of_OI_NonRept_Long_All - Spec$Pct_of_OI_NonRept_Short_All
+
+
+markets<-readr::read_csv("Data/MarketNames.csv")
+markets <- markets[,1]
+sincedate<-unique(Spec$Report_Date_as_MM_DD_YYYY)
+defaultdate<-as.Date(sincedate[length(sincedate)-52])
+
+column_names <-
+  data.frame(
+    "Comm_Net" = "Comm_Net",
+    "NonComm_Net" = "NonComm_Net",
+    "NonRept_Net" = "NonRept_Net",
+    "Pct_Comm_Net" = "Pct_Comm_Net",
+    "Pct_NonComm_Net" = "Pct_NonComm_Net",
+    "Pct_NonRept_Net" = "Pct_NonRept_Net"
+  )
+OIoutright<-dput(column_names[,1:3])
+OIpct<-dput(column_names[,4:6])
+
+```
+
+## Inputs {.sidebar}
+
+```{r}
+
+selectInput("MARKET", label = h3("Market"),
+    choices = markets,
+    selected = "UST 10Y NOTE - CHICAGO BOARD OF TRADE")
+
+selectInput("OIraw", label = h3("Open Interest: lots"),
+     choices = OIoutright,
+     selected = c("Comm_Net",
+    "NonComm_Net",
+    "NonRept_Net"),multiple = TRUE)
+ 
+ selectInput("OIpercent", label = h3("Open Interest: pct"),
+     choices = OIpct,
+     selected=c("Pct_Comm_Net",
+    "Pct_NonComm_Net",
+    "Pct_NonRept_Net"), multiple = TRUE)
+
+ selectInput("Sincedate", label = h3("Since"),
+     choices = sincedate,
+     selected=defaultdate)
+ 
+```
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Open Interest: number of lots net (long - short)
+
+```{r OI, echo=FALSE}
+
+market<-reactive(input$MARKET)
+OI<-reactive(input$OIraw)
+startdate<-reactive(input$Sincedate)
+
+renderPlotly({
+  
+  df <- Spec |>
+    dplyr::filter(Market_and_Exchange_Names == market(),Report_Date_as_MM_DD_YYYY>=startdate())
+  
+  data2<-data.frame('period'=as.Date(df$Report_Date_as_MM_DD_YYYY),df[c(OI())])
+
+   data2 <-
+   data2 %>% pivot_longer(c(-period), names_to = 'key', values_to = "value")
+
+
+p<-ggplot(data=data2,
+       aes(x=period, y=value, colour=key)) +
+  geom_line()+
+  labs(title = paste0("COTR: ",market()),
+       caption = "source: COTR, Hedge Analytics") +
+  scale_x_date(date_breaks = "6 months", date_labels =  "%b %Y", name = "Date") +
+  scale_y_continuous(name = "Lots", labels = scales::comma)+
+  theme_economist()+
+  theme(text=element_text(size=8))
+
+ggplotly(p)
+
+
+
+})
+
+
+```
+
+
+Row {data-width=350}
+-----------------------------------------------------------------------
+
+### Open Interest: percent of total
+
+```{r OIpct, echo=FALSE}
+market1<-reactive(input$MARKET)
+OIpct<-reactive(input$OIpercent)
+startdate1<-reactive(input$Sincedate)
+
+renderPlotly({
+  
+  df1 <- Spec |>
+    dplyr::filter(Market_and_Exchange_Names == market1(),Report_Date_as_MM_DD_YYYY>=startdate1())
+  
+  data3<-data.frame('period'=as.Date(df1$Report_Date_as_MM_DD_YYYY),df1[c(OIpct())])
+
+   data3 <-
+   data3 %>% pivot_longer(c(-period), names_to = 'key', values_to = "value")
+
+p<-ggplot(data=data3,
+       aes(x=as.Date(period), y=value, colour=key)) +
+  geom_line()+
+  labs(title = paste0("COTR: ",market()),
+       caption = "source: COTR, Hedge Analytics") +
+  scale_x_date(date_breaks = "6 months", date_labels =  "%b %Y", name = "Date") +
+  scale_y_continuous(name = "Percent", labels = scales::comma)+
+  theme_economist()+
+  theme(text=element_text(size=8))
+
+ggplotly(p)
+})
+```
+
